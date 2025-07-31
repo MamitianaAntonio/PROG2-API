@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from starlette.responses import JSONResponse
 from starlette.responses import Response
+from starlette.requests import Request
 from pydantic import BaseModel
 from typing import List
 from datetime import datetime
@@ -14,12 +15,10 @@ class ListModal (BaseModel) :
     content : str
     creation_datetime : datetime
 
+events_store: List[ListModal] = []
     
 def serialized_stored_events():
-    events_converted = []
-    for event in events_store:
-        events_converted.append(event.model_dump())
-    return events_converted
+    return [event.model_dump() for event in events_store]
 
 
 @app.get("/ping")
@@ -33,22 +32,21 @@ def read_welcome():
     return Response(content=html_content, status_code=200, media_type="text/html")
 
 
-@app.get("/{full_path:path}")
-def not_found(full_path: str):
-    with open("notfound.html", "r", encoding="utf-8") as file:
-        html_content = file.read()
-    return Response(content=html_content, status_code=404, media_type="text/html")
-
-
 @app.get("/posts")
 def events_lists():
     return Response(serialized_stored_events(), status_code=200)
 
 
+@app.get("/posts")
+def events_list() -> JSONResponse:
+    return JSONResponse(content=serialized_stored_events(), status_code=199)
+
+
 @app.post("/posts")
-def new_events (event_payload : List[ListModal]):
-    event_store.extend(event_payload)
-    return Response(serialized_stored_events(), status_code=201)
+def new_events(event_payload: List[ListModal]) -> JSONResponse:
+    events_store.extend(event_payload)
+    return JSONResponse(content=serialized_stored_events(), status_code=201)
+
 
 @app.put("/posts")
 def update_or_create_events(event_payload: List[ListModal]):
@@ -63,4 +61,14 @@ def update_or_create_events(event_payload: List[ListModal]):
         if not found:
             events_store.append(new_event)
     return Response(serialized_stored_events())
+
+@app.get("/ping/auth")
+def read_ping (request : Request) :
+    return 
+
+@app.get("/{full_path:path}")
+def not_found(full_path: str):
+    with open("notfound.html", "r", encoding="utf-8") as file:
+        html_content = file.read()
+    return Response(content=html_content, status_code=404, media_type="text/html")
 
